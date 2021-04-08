@@ -8,7 +8,7 @@ const backgroundCtx = backgroundCanvas.getContext('2d');
 backgroundCanvas.width = window.innerWidth;
 backgroundCanvas.height = window.innerHeight;
 
-const DEBUG = true;
+const DEBUG = false;
 
 //Represents a single creature wondering in the world
 class Creature
@@ -57,7 +57,7 @@ class Creature
 //
 class Flower
 {
-    constructor(x, y, size, tileIdx)
+    constructor(x, y, size, tileIdx, color)
     {
         this.location = {x: x, y: y};
         this.size = size;
@@ -66,7 +66,7 @@ class Flower
         this.splitSize = size;
         this.growRate = 0.01;
         this.tileIndex = tileIdx;
-        this.color = 'pink';
+        this.color = color;
     }
 
     grow()
@@ -206,10 +206,14 @@ class Tile
 
 class World
 {
-    constructor(width, height, tileSize)
+    constructor(width, height, tileSize, defaultScale)
     {
         this.dimensions = {width: width, height: height};
         this.tileSize = tileSize;
+        console.log(Math.round(width / 2) * tileSize);
+        console.log(Math.round(canvas.width / 2));
+        this.origin = {x: Math.round(canvas.width / 2) - Math.round(width / 2) * tileSize * defaultScale, 
+                       y: Math.round(canvas.height / 2) - Math.round(height / 2) * tileSize * defaultScale};
         this.init();
     }
 
@@ -218,7 +222,6 @@ class World
         this.creatures = [];
         this.tiles = [];
         this.flowers = [];
-        this.origin = {x: 0, y: 0};
         this.createMap();
         this.mapUpdateNeeded = true;
     }
@@ -235,39 +238,63 @@ class World
             let r = Math.random();
 
             const prevX = xCoord - 1;
-            //const nextX = xCoord + 1;
             const prevY = yCoord - 1;
-            //const nextY = yCoord + 1;
-            let nextToWater = false;
+            const nextX = xCoord + 1;
+
+            let nextToWater = 0;
 
             if (prevX >= 0)
             {
-                if (this.tiles[yCoord * height + prevX].type === "water")
+                /*if (this.tiles[yCoord * height + prevX].type === "water")
                 {
-                    nextToWater = true;
-                }
+                    nextToWater+=2;
+                }*/
+                
+                if (prevY >= 0)
+                {
+                    if (this.tiles[prevY * height + prevX].type === "water")
+                    {
+                        nextToWater++;
+                    }
+                }/*
+                else
+                {
+                    nextToWater++;
+                }*/
             }
+            else
+            {
+                nextToWater+=2;
+            }
+
             if (prevY >= 0)
             {
                 if (this.tiles[prevY * height + xCoord].type === "water")
                 {
-                    nextToWater = true;
+                    nextToWater+=2;
                 }
-            }
 
-            if (nextToWater)
-            {
-                if (r < 0.6)
+                if (nextX < width)
                 {
-                    color = null;
+                    if (this.tiles[prevY * height + nextX].type === "water")
+                    {
+                        nextToWater++;
+                    }
                 }
+                else
+                {
+                    nextToWater+=2;
+                }
+
             }
             else
             {
-                if (r < 0.01)
-                {
-                    color = null;
-                }
+                nextToWater+=2;
+            }
+
+            if (r < 0.01 + nextToWater * nextToWater * 0.01 * 6)
+            {
+                color = null;
             }
 
             if (color)
@@ -302,15 +329,15 @@ class World
         this.creatures.push(new Creature(x, y, direction, 10));
     }
 
-    addFlower()
+    addFlower(color)
     {
         const x = Math.random() * this.dimensions.width * this.tileSize;
         const y = Math.random() * this.dimensions.height * this.tileSize;
-        this.addFlowerIfPossible(x, y, 5);
+        this.addFlowerIfPossible(x, y, 5, color);
     }
 
     //Returns how much energy was moved in split
-    addFlowerIfPossible(newX, newY, newSize)
+    addFlowerIfPossible(newX, newY, newSize, color)
     {
         let flowerNotInWater = false;
 
@@ -352,7 +379,7 @@ class World
 
         if (flowerNotInWater)
         {
-            this.flowers.push(new Flower(newX, newY, newSize, closestTileIdx));
+            this.flowers.push(new Flower(newX, newY, newSize, closestTileIdx, color));
             this.tiles[closestTileIdx].nofFlowers++;
             return newSize;
         }
@@ -400,7 +427,7 @@ class World
                     const newX = x + Math.cos(dir) * magnitude;
                     const newY = y + Math.sin(dir) * magnitude;
 
-                    const energyMoved = this.addFlowerIfPossible(newX, newY, flower.splitSize);
+                    const energyMoved = this.addFlowerIfPossible(newX, newY, flower.splitSize, flower.color);
                     if (energyMoved === 0)
                     {
                         //New flower couldnt be created
@@ -463,7 +490,7 @@ class Simulator
         const worldWidth = 30;
         const worldHeight = 30;
         
-        this.world = new World(worldWidth, worldHeight, this.tileSize);
+        this.world = new World(worldWidth, worldHeight, this.tileSize, this.scale);
 
         this.init();
     }
@@ -472,14 +499,16 @@ class Simulator
     {
         const nofCreatures = 1;
         const nofFlowers = 5;
+        const flowerColors = ['pink', 'cyan', 'black', 'white', 'yellow']
         for (let i = 0; i < nofCreatures; i++)
         {
             this.world.addCreature(100, 100);
         }
 
+        
         for (let i = 0; i < nofFlowers; i++)
         {
-            this.world.addFlower();
+            this.world.addFlower(flowerColors[i]);
         }
 
         //this.world.updateMap(this.scale)

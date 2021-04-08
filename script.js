@@ -127,7 +127,7 @@ class Tile
         this.type = type;
         this.maxEnergy = 100;
         this.minEnergy = 0;
-        this.energy = 15; //Math.round(this.maxEnergy/2); //50% at the beginning
+        this.energy = 25; //Math.round(this.maxEnergy/2); //50% at the beginning
         this.energyGrowRate = 0.02;
         this.nofFlowers = 0;
         //Storage to store energy which will be returned after all flowers have died
@@ -394,7 +394,7 @@ class World
                     const x = flower.location.x;
                     const y = flower.location.y;
                     //random direction and magnitude to pop
-                    const dir = Math.random() * Math.PI;
+                    const dir = Math.random() * 2 * Math.PI;
                     const magnitude = Math.random() * this.tileSize + this.tileSize;
 
                     const newX = x + Math.cos(dir) * magnitude;
@@ -471,7 +471,7 @@ class Simulator
     init()
     {
         const nofCreatures = 1;
-        const nofFlowers = 1;
+        const nofFlowers = 5;
         for (let i = 0; i < nofCreatures; i++)
         {
             this.world.addCreature(100, 100);

@@ -127,7 +127,7 @@ class Tile
         this.type = type;
         this.maxEnergy = 100;
         this.minEnergy = 0;
-        this.energy = 50; //Math.round(this.maxEnergy/2); //50% at the beginning
+        this.energy = 15; //Math.round(this.maxEnergy/2); //50% at the beginning
         this.energyGrowRate = 0.02;
         this.nofFlowers = 0;
         //Storage to store energy which will be returned after all flowers have died
@@ -354,7 +354,6 @@ class World
         {
             this.flowers.push(new Flower(newX, newY, newSize, closestTileIdx));
             this.tiles[closestTileIdx].nofFlowers++;
-            this.tiles[closestTileIdx].energy -= newSize;
             return newSize;
         }
 
@@ -472,7 +471,7 @@ class Simulator
     init()
     {
         const nofCreatures = 1;
-        const nofFlowers = 10;
+        const nofFlowers = 1;
         for (let i = 0; i < nofCreatures; i++)
         {
             this.world.addCreature(100, 100);
@@ -486,20 +485,10 @@ class Simulator
         //this.world.updateMap(this.scale)
     }
 
-    clearCanvas()
-    {
-        /*ctx.fillStyle = 'blue';
-        ctx.beginPath();
-	    ctx.fillRect(0, 
-				     0, 
-				     canvas.width, 
-				     canvas.height);
-        ctx.closePath();*/
-    }
+
 
     step()
     {
-        this.clearCanvas();
         this.world.draw(this.scale);
     }
 

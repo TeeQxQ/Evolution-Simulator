@@ -1,7 +1,14 @@
-const canvas = document.getElementById('mainCanvas');
+const canvas = document.getElementById('game-layer');
 const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
+
+const backgroundCanvas = document.getElementById('background-layer');
+const backgroundCtx = backgroundCanvas.getContext('2d');
+backgroundCanvas.width = window.innerWidth;
+backgroundCanvas.height = window.innerHeight;
+
+const DEBUG = true;
 
 //Represents a single creature wondering in the world
 class Creature
@@ -34,8 +41,9 @@ class Creature
 
     draw(origin, scale)
     {
-        ctx.fillStyle = 'red';
+        
         ctx.beginPath();
+        ctx.fillStyle = 'red';
         ctx.arc(origin.x + this.location.x * scale,
                 origin.y + this.location.y * scale,
                 this.radius * scale,
@@ -55,6 +63,7 @@ class Flower
         this.size = size;
         this.originalSize = size;
         this.maxSize = size * 2;
+        this.splitSize = size;
         this.growRate = 0.01;
         this.tileIndex = tileIdx;
         this.color = 'pink';
@@ -71,7 +80,7 @@ class Flower
         //Split
         else
         {
-            this.size = this.originalSize;
+            this.size -= this.splitSize;
             return 0;
         }
     }
@@ -118,7 +127,7 @@ class Tile
         this.type = type;
         this.maxEnergy = 100;
         this.minEnergy = 0;
-        this.energy = 100; //Math.round(this.maxEnergy/2); //50% at the beginning
+        this.energy = 50; //Math.round(this.maxEnergy/2); //50% at the beginning
         this.energyGrowRate = 0.02;
         this.nofFlowers = 0;
         //Storage to store energy which will be returned after all flowers have died
@@ -131,6 +140,7 @@ class Tile
         return this.energy > this.minEnergy;
     }
 
+    //Returns true if something needs to be redrawn on the screen
     step()
     {
         if(this.nofFlowers === 0 && this.type != "water")
@@ -146,6 +156,7 @@ class Tile
                 {
                     this.type = "grass";
                     this.color = "green";
+                    return true;
                 }
             }
         }
@@ -155,25 +166,40 @@ class Tile
             {
                 this.type = "sand";
                 this.color = "orange";
+                return true;
             }
         }
+
+        return false;
     }
 
     draw(origin, scale)
     {
         if (this.type != "water")
         {
-            ctx.fillStyle = this.color;
+            backgroundCtx.fillStyle = this.color;
             //ctx.lineWidth = "1";
-            ctx.beginPath();
-            ctx.rect(origin.x + this.location.x * this.size * scale,
-                     origin.y + this.location.y * this.size * scale,
-                     this.size * scale,
-                     this.size * scale
-                     );
-            ctx.fill();
-            //ctx.stroke();
-            ctx.closePath();
+            backgroundCtx.beginPath();
+            backgroundCtx.rect(origin.x + this.location.x * this.size * scale,
+                               origin.y + this.location.y * this.size * scale,
+                               this.size * scale,
+                               this.size * scale
+                               );
+            backgroundCtx.fill();
+            backgroundCtx.closePath();
+
+            if (DEBUG)
+            {
+                backgroundCtx.stroke();
+                backgroundCtx.font = "10px Arial";
+                backgroundCtx.fillStyle = "white";
+                backgroundCtx.textAlign = "center";
+                backgroundCtx.fillText(this.energy.toFixed(2) + ":" + this.energyRecoveryStorage.toFixed(2), 
+                                    origin.x + (this.location.x * this.size + this.size/2) * scale,
+                                    origin.y + (this.location.y * this.size + this.size/2) * scale,);
+            }
+            
+            
         }
     }
 }
@@ -194,6 +220,7 @@ class World
         this.flowers = [];
         this.origin = {x: 0, y: 0};
         this.createMap();
+        this.mapUpdateNeeded = true;
     }
 
     createMap()
@@ -258,6 +285,16 @@ class World
         
     }
 
+    //Map is drawn on the background canvas, and it is updated infrequently to optimize performance
+    updateMap(scale)
+    {
+        backgroundCtx.clearRect(0, 0, backgroundCanvas.width, backgroundCanvas.height);
+        this.tiles.forEach((tile, index) => 
+        {
+            tile.draw(this.origin, scale);
+        });
+    }
+
     addCreature(x, y)
     {
         //random direction
@@ -272,6 +309,7 @@ class World
         this.addFlowerIfPossible(x, y, 5);
     }
 
+    //Returns how much energy was moved in split
     addFlowerIfPossible(newX, newY, newSize)
     {
         let flowerNotInWater = false;
@@ -316,22 +354,34 @@ class World
         {
             this.flowers.push(new Flower(newX, newY, newSize, closestTileIdx));
             this.tiles[closestTileIdx].nofFlowers++;
+            this.tiles[closestTileIdx].energy -= newSize;
+            return newSize;
         }
+
+        return 0;
     }
 
     moveOrigin(deltaX, deltaY)
     {
         this.origin.x += Math.round(deltaX);
         this.origin.y += Math.round(deltaY);
+        this.mapUpdateNeeded = true;
     }
 
     draw(scale)
     {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
         this.tiles.forEach((tile, index) => 
         {
-            tile.step();
-            tile.draw(this.origin, scale);
+            this.mapUpdateNeeded = tile.step() || this.mapUpdateNeeded;
         });
+
+        if (this.mapUpdateNeeded || DEBUG)
+        {
+            this.updateMap(scale);
+            this.mapUpdateNeeded = false;
+        }
 
         this.flowers.forEach((flower, index) => 
         {
@@ -351,7 +401,13 @@ class World
                     const newX = x + Math.cos(dir) * magnitude;
                     const newY = y + Math.sin(dir) * magnitude;
 
-                    this.addFlowerIfPossible(newX, newY, flower.originalSize);
+                    const energyMoved = this.addFlowerIfPossible(newX, newY, flower.splitSize);
+                    if (energyMoved === 0)
+                    {
+                        //New flower couldnt be created
+                        this.tiles[flower.tileIndex].energyRecoveryStorage += flower.splitSize;
+                    }
+
                 }
                 else
                 {
@@ -369,6 +425,7 @@ class World
                 if(flowerWithering === 0)
                 {
                     this.tiles[flower.tileIndex].nofFlowers--;
+                    this.tiles[flower.tileIndex].energyRecoveryStorage += flower.originalSize;
                     this.flowers.splice(index, 1);
                 }
                 else
@@ -382,8 +439,8 @@ class World
 
         this.creatures.forEach((creature, index) =>
         {
-            creature.step();
-            creature.draw(this.origin, scale);
+            //creature.step();
+            //creature.draw(this.origin, scale);
         });
 
         
@@ -425,17 +482,19 @@ class Simulator
         {
             this.world.addFlower();
         }
+
+        //this.world.updateMap(this.scale)
     }
 
     clearCanvas()
     {
-        ctx.fillStyle = 'blue';
+        /*ctx.fillStyle = 'blue';
         ctx.beginPath();
 	    ctx.fillRect(0, 
 				     0, 
 				     canvas.width, 
 				     canvas.height);
-        ctx.closePath();
+        ctx.closePath();*/
     }
 
     step()

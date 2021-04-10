@@ -1,0 +1,13 @@
+class MapGenerator
+{
+    constructor()
+    {
+        //
+    }
+
+    generate()
+    {
+        //
+        
+    }
+}

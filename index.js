@@ -8,201 +8,7 @@ const backgroundCtx = backgroundCanvas.getContext('2d');
 backgroundCanvas.width = window.innerWidth;
 backgroundCanvas.height = window.innerHeight;
 
-const DEBUG = false;
-
-//Represents a single creature wondering in the world
-class Creature
-{
-    constructor(x, y, direction, radius)
-    {
-        this.location = {x: x, y: y};
-        this.velocity = {x: 0, y: 0};
-        this.velocityMagnitude = 0;
-        this.radius = radius;
-        this.direction = direction; //0 - 2*PI
-        this.energy = 100;
-
-        this.updateVelocity();
-    }
-
-    updateVelocity()
-    {
-        this.velocity = {
-            x: Math.cos(this.direction) * this.velocityMagnitude,
-            y: Math.sin(this.direction) * this.velocityMagnitude
-        }
-    }
-
-    step()
-    {
-        this.location.x += this.velocity.x;
-        this.location.y += this.velocity.y;
-    }
-
-    draw(origin, scale)
-    {
-        
-        ctx.beginPath();
-        ctx.fillStyle = 'red';
-        ctx.arc(origin.x + this.location.x * scale,
-                origin.y + this.location.y * scale,
-                this.radius * scale,
-                0,
-                Math.PI * 2);
-        ctx.fill();
-        ctx.closePath();
-    }
-}
-
-//
-class Flower
-{
-    constructor(x, y, size, tileIdx, color)
-    {
-        this.location = {x: x, y: y};
-        this.size = size;
-        this.originalSize = size;
-        this.maxSize = size * 2;
-        this.splitSize = size;
-        this.growRate = 0.01;
-        this.tileIndex = tileIdx;
-        this.color = color;
-    }
-
-    grow()
-    {
-        //Grow larger
-        if (this.size < this.maxSize)
-        {
-            this.size += this.growRate;
-            return this.growRate;
-        }
-        //Split
-        else
-        {
-            this.size -= this.splitSize;
-            return 0;
-        }
-    }
-
-    wither()
-    {
-        this.color = 'grey';
-        //Wither until dead
-        if (this.size > this.originalSize)
-        {
-            this.size -= this.growRate;
-            return this.growRate;
-        }
-        else
-        {
-            return 0;
-        }
-    }
-
-    draw(origin, scale)
-    {
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.arc(origin.x + this.location.x * scale,
-                origin.y + this.location.y * scale,
-                this.size * scale,
-                0,
-                Math.PI * 2);
-        ctx.fill();
-        ctx.closePath();
-    }
-
-}
-
-//World is created from square blocks called tiles
-class Tile
-{
-    constructor(indX, indY, size, color, type)
-    {
-        //Location refers to an index in the 2d array
-        this.location = {x: indX, y: indY};
-        this.size = size;
-        this.color = color;
-        this.type = type;
-        this.maxEnergy = 100;
-        this.minEnergy = 0;
-        this.energy = 25; //Math.round(this.maxEnergy/2); //50% at the beginning
-        this.energyGrowRate = 0.02;
-        this.nofFlowers = 0;
-        //Storage to store energy which will be returned after all flowers have died
-        this.energyRecoveryStorage = 0;
-        this.energyRecoveryRate = 0.01;
-    }
-
-    hasEnergy()
-    {
-        return this.energy > this.minEnergy;
-    }
-
-    //Returns true if something needs to be redrawn on the screen
-    step()
-    {
-        if(this.nofFlowers === 0 && this.type != "water")
-        {
-            if (this.energyRecoveryStorage > 0)
-            {
-                this.energy += this.energyRecoveryRate;
-                this.energyRecoveryStorage -= this.energyRecoveryRate;
-            }
-            else
-            {
-                if (this.energy > 0 && this.type != "grass")
-                {
-                    this.type = "grass";
-                    this.color = "green";
-                    return true;
-                }
-            }
-        }
-        else
-        {
-            if (this.energy <= this.minEnergy && this.type != "sand")
-            {
-                this.type = "sand";
-                this.color = "orange";
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    draw(origin, scale)
-    {
-        if (this.type != "water")
-        {
-            backgroundCtx.fillStyle = this.color;
-            //ctx.lineWidth = "1";
-            backgroundCtx.beginPath();
-            backgroundCtx.rect(origin.x + this.location.x * this.size * scale,
-                               origin.y + this.location.y * this.size * scale,
-                               this.size * scale,
-                               this.size * scale
-                               );
-            backgroundCtx.fill();
-            backgroundCtx.closePath();
-
-            if (DEBUG)
-            {
-                backgroundCtx.stroke();
-                backgroundCtx.font = "10px Arial";
-                backgroundCtx.fillStyle = "white";
-                backgroundCtx.textAlign = "center";
-                backgroundCtx.fillText(this.energy.toFixed(2) + ":" + this.energyRecoveryStorage.toFixed(2), 
-                                    origin.x + (this.location.x * this.size + this.size/2) * scale,
-                                    origin.y + (this.location.y * this.size + this.size/2) * scale,);
-            }
-            
-            
-        }
-    }
-}
+const DEBUG = true;
 
 class World
 {
@@ -210,10 +16,9 @@ class World
     {
         this.dimensions = {width: width, height: height};
         this.tileSize = tileSize;
-        console.log(Math.round(width / 2) * tileSize);
-        console.log(Math.round(canvas.width / 2));
         this.origin = {x: Math.round(canvas.width / 2) - Math.round(width / 2) * tileSize * defaultScale, 
                        y: Math.round(canvas.height / 2) - Math.round(height / 2) * tileSize * defaultScale};
+        this.canvasArtist = new CanvasArtist(backgroundCtx, ctx);
         this.init();
     }
 
@@ -230,7 +35,87 @@ class World
     {
         const width = this.dimensions.width;
         const height = this.dimensions.height;
+        let waterArray = new Array(width * height);
+
         for (let i = 0; i < width * height; i++)
+        {
+            const xCoord = i % width;
+            const yCoord = Math.floor(i / height);
+            this.tiles.push(new Tile(xCoord, yCoord, this.tileSize, "green", "grass"));
+            waterArray[i] = 0;
+        }
+
+        for(let i = 0; i < 1; i++)
+        {
+            const r = Math.floor(Math.random() * width * height);
+            const prevR = r - 1;
+            const nextR = r + 1;
+            const prevRowR = r - width;
+            const nextRowR = r + width;
+
+            console.log("r: " + r);
+            console.log("prevR: " + prevR);
+            console.log("nextR: " + nextR);
+            console.log("prevRowR: " + prevRowR);
+            console.log("nextRowR: " + nextRowR);
+            
+            waterArray[r] += 3;
+            if (prevR >= 0 && r % width != 0)
+            {
+                waterArray[prevR] += 2;
+            }
+
+            if (nextR < width * height && r % width != width - 1)
+            {
+                waterArray[nextR] += 2;
+            }
+
+            if (prevRowR >= 0 && r % height != 0)
+            {
+                waterArray[prevRowR] += 2;
+                
+                if (prevRowR - 1 >= 0)
+                {
+                    waterArray[prevRowR - 1] += 2;
+                }
+
+                if (prevRowR + 1 < width * height && (prevRowR + 1) % width != width-1)
+                {
+                    waterArray[prevRowR + 1] += 2;
+                }
+            }
+
+            if (nextRowR < width * height && r % height != height - 1)
+            {
+                waterArray[nextRowR] += 2;
+
+                if (nextRowR - 1 >= 0)
+                {
+                    waterArray[nextRowR - 1] += 2;
+                }
+
+                if (nextRowR + 1 < width * height)
+                {
+                    waterArray[nextRowR + 1] += 2;
+                }
+            }
+        }
+
+        for (let i = 0; i < width * height; i++)
+        {
+            if (waterArray[i] > 1)
+            {
+                this.tiles[i].type = "water";
+                this.tiles[i].color = "blue";
+            }
+            if (waterArray[i] > 2)
+            {
+                this.tiles[i].type = "sand";
+                this.tiles[i].color = "orange";
+            }
+        }
+
+        /*for (let i = 0; i < width * height; i++)
         {
             const xCoord = i % width;
             const yCoord = Math.floor(i / height);
@@ -245,10 +130,6 @@ class World
 
             if (prevX >= 0)
             {
-                /*if (this.tiles[yCoord * height + prevX].type === "water")
-                {
-                    nextToWater+=2;
-                }*/
                 
                 if (prevY >= 0)
                 {
@@ -256,11 +137,6 @@ class World
                     {
                         nextToWater++;
                     }
-                }/*
-                else
-                {
-                    nextToWater++;
-                }*/
             }
             else
             {
@@ -308,7 +184,7 @@ class World
                 this.tiles.push(new Tile(xCoord, yCoord, this.tileSize, color, type));
             }
 
-        }
+        }*/
         
     }
 
@@ -318,7 +194,8 @@ class World
         backgroundCtx.clearRect(0, 0, backgroundCanvas.width, backgroundCanvas.height);
         this.tiles.forEach((tile, index) => 
         {
-            tile.draw(this.origin, scale);
+            //tile.draw(this.origin, scale);
+            this.canvasArtist.drawTile(tile, this.origin, scale);
         });
     }
 
@@ -441,7 +318,8 @@ class World
                     this.tiles[flower.tileIndex].energy -= flowerGrowth;
                 }
 
-                flower.draw(this.origin, scale);
+                //flower.draw(this.origin, scale);
+                this.canvasArtist.drawFlower(flower, this.origin, scale);
 
             }
             //...or die
@@ -510,8 +388,6 @@ class Simulator
         {
             this.world.addFlower(flowerColors[i]);
         }
-
-        //this.world.updateMap(this.scale)
     }
 
 

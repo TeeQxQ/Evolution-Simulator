@@ -8,6 +8,11 @@ class CanvasArtist
         this.ctx = gameContext;
     }
 
+    drawClearBackground(width, height)
+    {
+        this.bgCtx.clearRect(0, 0, width, height);
+    }
+
     drawCreature(creature, origin, scale)
     {
         this.ctx.beginPath();
@@ -23,10 +28,14 @@ class CanvasArtist
 
     drawFlower(flower, origin, scale)
     {
+        const x = origin.x + flower.location.x * scale;
+        const y = origin.y + flower.location.y * scale;
+
         this.ctx.fillStyle = flower.color;
         this.ctx.beginPath();
-        this.ctx.arc(origin.x + flower.location.x * scale,
-                     origin.y + flower.location.y * scale,
+        //center point
+        this.ctx.arc(x,
+                     y,
                      flower.size * scale,
                      0,
                      Math.PI * 2);

@@ -8,7 +8,7 @@ const backgroundCtx = backgroundCanvas.getContext('2d');
 backgroundCanvas.width = window.innerWidth;
 backgroundCanvas.height = window.innerHeight;
 
-const DEBUG = true;
+const DEBUG = false;
 
 class World
 {
@@ -19,182 +19,29 @@ class World
         this.origin = {x: Math.round(canvas.width / 2) - Math.round(width / 2) * tileSize * defaultScale, 
                        y: Math.round(canvas.height / 2) - Math.round(height / 2) * tileSize * defaultScale};
         this.canvasArtist = new CanvasArtist(backgroundCtx, ctx);
+        this.mapGenerator = new MapGenerator();
         this.init();
     }
 
     init()
     {
         this.creatures = [];
-        this.tiles = [];
+        this.tiles = this.mapGenerator.generate(this.dimensions.width,
+                                                this.dimensions.height,
+                                                this.tileSize
+                                                );
         this.flowers = [];
-        this.createMap();
         this.mapUpdateNeeded = true;
-    }
-
-    createMap()
-    {
-        const width = this.dimensions.width;
-        const height = this.dimensions.height;
-        let waterArray = new Array(width * height);
-
-        for (let i = 0; i < width * height; i++)
-        {
-            const xCoord = i % width;
-            const yCoord = Math.floor(i / height);
-            this.tiles.push(new Tile(xCoord, yCoord, this.tileSize, "green", "grass"));
-            waterArray[i] = 0;
-        }
-
-        for(let i = 0; i < 1; i++)
-        {
-            const r = Math.floor(Math.random() * width * height);
-            const prevR = r - 1;
-            const nextR = r + 1;
-            const prevRowR = r - width;
-            const nextRowR = r + width;
-
-            console.log("r: " + r);
-            console.log("prevR: " + prevR);
-            console.log("nextR: " + nextR);
-            console.log("prevRowR: " + prevRowR);
-            console.log("nextRowR: " + nextRowR);
-            
-            waterArray[r] += 3;
-            if (prevR >= 0 && r % width != 0)
-            {
-                waterArray[prevR] += 2;
-            }
-
-            if (nextR < width * height && r % width != width - 1)
-            {
-                waterArray[nextR] += 2;
-            }
-
-            if (prevRowR >= 0 && r % height != 0)
-            {
-                waterArray[prevRowR] += 2;
-                
-                if (prevRowR - 1 >= 0)
-                {
-                    waterArray[prevRowR - 1] += 2;
-                }
-
-                if (prevRowR + 1 < width * height && (prevRowR + 1) % width != width-1)
-                {
-                    waterArray[prevRowR + 1] += 2;
-                }
-            }
-
-            if (nextRowR < width * height && r % height != height - 1)
-            {
-                waterArray[nextRowR] += 2;
-
-                if (nextRowR - 1 >= 0)
-                {
-                    waterArray[nextRowR - 1] += 2;
-                }
-
-                if (nextRowR + 1 < width * height)
-                {
-                    waterArray[nextRowR + 1] += 2;
-                }
-            }
-        }
-
-        for (let i = 0; i < width * height; i++)
-        {
-            if (waterArray[i] > 1)
-            {
-                this.tiles[i].type = "water";
-                this.tiles[i].color = "blue";
-            }
-            if (waterArray[i] > 2)
-            {
-                this.tiles[i].type = "sand";
-                this.tiles[i].color = "orange";
-            }
-        }
-
-        /*for (let i = 0; i < width * height; i++)
-        {
-            const xCoord = i % width;
-            const yCoord = Math.floor(i / height);
-            let color = 'green';
-            let r = Math.random();
-
-            const prevX = xCoord - 1;
-            const prevY = yCoord - 1;
-            const nextX = xCoord + 1;
-
-            let nextToWater = 0;
-
-            if (prevX >= 0)
-            {
-                
-                if (prevY >= 0)
-                {
-                    if (this.tiles[prevY * height + prevX].type === "water")
-                    {
-                        nextToWater++;
-                    }
-            }
-            else
-            {
-                nextToWater+=2;
-            }
-
-            if (prevY >= 0)
-            {
-                if (this.tiles[prevY * height + xCoord].type === "water")
-                {
-                    nextToWater+=2;
-                }
-
-                if (nextX < width)
-                {
-                    if (this.tiles[prevY * height + nextX].type === "water")
-                    {
-                        nextToWater++;
-                    }
-                }
-                else
-                {
-                    nextToWater+=2;
-                }
-
-            }
-            else
-            {
-                nextToWater+=2;
-            }
-
-            if (r < 0.01 + nextToWater * nextToWater * 0.01 * 6)
-            {
-                color = null;
-            }
-
-            if (color)
-            {
-                const type = "grass";
-                this.tiles.push(new Tile(xCoord, yCoord, this.tileSize, color, type));
-            }
-            else
-            {
-                const type = "water";
-                this.tiles.push(new Tile(xCoord, yCoord, this.tileSize, color, type));
-            }
-
-        }*/
-        
     }
 
     //Map is drawn on the background canvas, and it is updated infrequently to optimize performance
     updateMap(scale)
     {
-        backgroundCtx.clearRect(0, 0, backgroundCanvas.width, backgroundCanvas.height);
+        const width = backgroundCanvas.width;
+        const height = backgroundCanvas.height;
+        this.canvasArtist.drawClearBackground(width, height);
         this.tiles.forEach((tile, index) => 
         {
-            //tile.draw(this.origin, scale);
             this.canvasArtist.drawTile(tile, this.origin, scale);
         });
     }
@@ -210,11 +57,11 @@ class World
     {
         const x = Math.random() * this.dimensions.width * this.tileSize;
         const y = Math.random() * this.dimensions.height * this.tileSize;
-        this.addFlowerIfPossible(x, y, 5, color);
+        this.addFlowerIfPossible(x, y, 10, color);
     }
 
     //Returns how much energy was moved in split
-    addFlowerIfPossible(newX, newY, newSize, color)
+    addFlowerIfPossible(newX, newY, energy, color)
     {
         let flowerNotInWater = false;
 
@@ -256,9 +103,9 @@ class World
 
         if (flowerNotInWater)
         {
-            this.flowers.push(new Flower(newX, newY, newSize, closestTileIdx, color));
+            this.flowers.push(new Flower(newX, newY, energy, closestTileIdx, color));
             this.tiles[closestTileIdx].nofFlowers++;
-            return newSize;
+            return energy;
         }
 
         return 0;
@@ -280,7 +127,7 @@ class World
             this.mapUpdateNeeded = tile.step() || this.mapUpdateNeeded;
         });
 
-        if (this.mapUpdateNeeded || DEBUG)
+        if (this.mapUpdateNeeded || DEBUG_CANVAS_ARTIST)
         {
             this.updateMap(scale);
             this.mapUpdateNeeded = false;
@@ -304,11 +151,11 @@ class World
                     const newX = x + Math.cos(dir) * magnitude;
                     const newY = y + Math.sin(dir) * magnitude;
 
-                    const energyMoved = this.addFlowerIfPossible(newX, newY, flower.splitSize, flower.color);
+                    const energyMoved = this.addFlowerIfPossible(newX, newY, flower.splitEnergy, flower.color);
                     if (energyMoved === 0)
                     {
                         //New flower couldnt be created
-                        this.tiles[flower.tileIndex].energyRecoveryStorage += flower.splitSize;
+                        this.tiles[flower.tileIndex].energyRecoveryStorage += flower.splitEnergy;
                     }
 
                 }
@@ -329,13 +176,13 @@ class World
                 if(flowerWithering === 0)
                 {
                     this.tiles[flower.tileIndex].nofFlowers--;
-                    this.tiles[flower.tileIndex].energyRecoveryStorage += flower.originalSize;
+                    this.tiles[flower.tileIndex].energyRecoveryStorage += flower.minEnergy;
                     this.flowers.splice(index, 1);
                 }
                 else
                 {
                     this.tiles[flower.tileIndex].energyRecoveryStorage += flowerWithering;
-                    flower.draw(this.origin, scale);
+                    this.canvasArtist.drawFlower(flower, this.origin, scale);
                 }
             }
             
@@ -383,14 +230,11 @@ class Simulator
             this.world.addCreature(100, 100);
         }
 
-        
         for (let i = 0; i < nofFlowers; i++)
         {
             this.world.addFlower(flowerColors[i]);
         }
     }
-
-
 
     step()
     {

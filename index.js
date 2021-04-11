@@ -50,7 +50,7 @@ class World
     {
         //random direction
         const direction = Math.random() * 2 * Math.PI;
-        this.creatures.push(new Creature(x, y, direction, 10));
+        this.creatures.push(new Creature(x, y, direction, 20));
     }
 
     addFlower(color)
@@ -116,6 +116,13 @@ class World
         this.origin.x += Math.round(deltaX);
         this.origin.y += Math.round(deltaY);
         this.mapUpdateNeeded = true;
+    }
+
+    distance(x1, y1, x2, y2)
+    {
+        const xDiff = x1 - x2;
+        const yDiff = y1 - y2;
+        return Math.sqrt(Math.pow(xDiff, 2) + Math.pow(yDiff, 2));
     }
 
     draw(scale)
@@ -188,10 +195,34 @@ class World
             
         });
 
-        this.creatures.forEach((creature, index) =>
+        this.creatures.forEach((creature, creatureIndex) =>
         {
-            //creature.step();
-            //creature.draw(this.origin, scale);
+            creature.step();
+
+            //Collisions with flowers
+            this.flowers.forEach((flower, flowerIndex) => 
+            {
+                if (this.distance(creature.location.x, 
+                                  creature.location.y, 
+                                  flower.location.x, 
+                                  flower.location.y) < creature.radius + flower.size)
+                {
+                    if(creature.eat(flower.energy))
+                    {
+                        this.flowers.splice(flowerIndex, 1);
+                    }
+                }
+            })
+
+            if (creature.isAlive())
+            {
+                this.canvasArtist.drawCreature(creature, this.origin, scale);
+            }
+            else
+            {
+                this.creatures.splice(creatureIndex, 1);
+            }
+            
         });
 
         
@@ -223,16 +254,16 @@ class Simulator
     init()
     {
         const nofCreatures = 1;
-        const nofFlowers = 5;
-        const flowerColors = ['pink', 'cyan', 'black', 'white', 'yellow']
+        const nofFlowers = 10;
+        const flowerColor = {r: 255, g: 0, b: 0};
         for (let i = 0; i < nofCreatures; i++)
         {
-            this.world.addCreature(100, 100);
+            this.world.addCreature(750, 750);
         }
 
         for (let i = 0; i < nofFlowers; i++)
         {
-            this.world.addFlower(flowerColors[i]);
+            this.world.addFlower(flowerColor);
         }
     }
 
@@ -294,6 +325,7 @@ class Simulator
     {
         this.mouseClicked = true;
         this.mouseClickCoord = {x: event.x, y: event.y};
+        this.world.creatures[0].rotate(Math.PI/2);
     }
 
     releaseController(event)

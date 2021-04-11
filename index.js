@@ -199,9 +199,26 @@ class World
         {
             creature.step();
 
+            //Update sight based on tile
+            const sightX = creature.location.x + creature.sight.x;
+            const sightY = creature.location.y + creature.sight.y;
+            const tileX = Math.floor(sightX / this.tileSize);
+            const tileY = Math.floor(sightY / this.tileSize);
+            creature.sightColor = this.tiles[tileY * this.dimensions.width + tileX].color;
+
             //Collisions with flowers
             this.flowers.forEach((flower, flowerIndex) => 
             {
+                //Check wheter sight is on flower:
+                if (this.distance(sightX,
+                                  sightY,
+                                  flower.location.x,
+                                  flower.location.y) < creature.sightRange)
+                {
+                    const newColor = 'rgb(' + flower.color.r + ',' + flower.color.g + ',' + flower.color.b + ')';
+                    creature.sightColor = newColor;
+                }
+
                 if (this.distance(creature.location.x, 
                                   creature.location.y, 
                                   flower.location.x, 
@@ -254,7 +271,7 @@ class Simulator
     init()
     {
         const nofCreatures = 1;
-        const nofFlowers = 10;
+        const nofFlowers = 1;
         const flowerColor = {r: 255, g: 0, b: 0};
         for (let i = 0; i < nofCreatures; i++)
         {

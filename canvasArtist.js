@@ -39,23 +39,35 @@ class CanvasArtist
     {
         this.ctx.beginPath();
         this.ctx.fillStyle = 'cyan';
-        this.ctx.arc(origin.x + Math.floor(creature.location.x * scale),
-                     origin.y + Math.floor(creature.location.y * scale),
+        this.ctx.arc(origin.x + Math.round(creature.location.x * scale),
+                     origin.y + Math.round(creature.location.y * scale),
                      creature.radius * scale,
                      0,
                      Math.PI * 2);
         this.ctx.fill();
+        this.ctx.closePath();
+
+        this.ctx.beginPath();
+        this.ctx.fillStyle = creature.sightColor;
+        this.ctx.arc(
+            origin.x + Math.round((creature.location.x + creature.sight.x) * scale),
+            origin.y + Math.round((creature.location.y + creature.sight.y) * scale),
+            creature.sightRange * scale,
+            0,
+            Math.PI * 2
+        );
+        this.ctx.fill();
+        this.ctx.closePath();
 
         this.ctx.stroke();
         this.ctx.font = "10px Arial";
         this.ctx.fillStyle = "black";
         this.ctx.textAlign = "center";
         this.ctx.fillText(creature.energy.toFixed(2), 
-                          origin.x + Math.floor((creature.location.x) * scale),
-                          origin.y + Math.floor((creature.location.y) * scale)
+                          origin.x + Math.round((creature.location.x) * scale),
+                          origin.y + Math.round((creature.location.y) * scale)
                         );
 
-        this.ctx.closePath();
     }
 
     drawFlower(flower, origin, scale)

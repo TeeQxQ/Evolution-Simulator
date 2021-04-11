@@ -16,11 +16,16 @@ class Creature
         this.minEnergy = 0;
         this.energy = this.maxEnergy;
         this.energyConsumption = 0.01;
+        this.waterMultiplier = 5;
 
         //Vision
-        
+        this.sight = {x: 0, y: 0};
+        this.sightMagnitude = this.radius * 3;
+        this.sightRange = 20;
+        this.sightColor = '';
 
         this.updateVelocity();
+        this.updateSight();
     }
 
     updateVelocity()
@@ -28,6 +33,14 @@ class Creature
         this.velocity = {
             x: Math.cos(this.direction) * this.velocityMagnitude,
             y: Math.sin(this.direction) * this.velocityMagnitude
+        }
+    }
+
+    updateSight()
+    {
+        this.sight = {
+            x: Math.cos(this.direction) * this.sightMagnitude,
+            y: Math.sin(this.direction) * this.sightMagnitude
         }
     }
 
@@ -45,6 +58,7 @@ class Creature
         }
 
         this.updateVelocity();
+        this.updateSight();
     }
 
     eat(energy)

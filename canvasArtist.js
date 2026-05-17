@@ -52,19 +52,22 @@ class CanvasArtist
         this.ctx.fill();
         this.ctx.closePath();
 
-        for (const s of creature.sights)
+        if (DEBUG_CANVAS_ARTIST)
         {
-            this.ctx.beginPath();
-            this.ctx.fillStyle = s.color;
-            this.ctx.arc(
-                origin.x + Math.round((creature.location.x + s.vector.x) * scale),
-                origin.y + Math.round((creature.location.y + s.vector.y) * scale),
-                creature.sightRange * scale,
-                0,
-                Math.PI * 2
-            );
-            this.ctx.fill();
-            this.ctx.closePath();
+            for (const s of creature.sights)
+            {
+                this.ctx.beginPath();
+                this.ctx.fillStyle = s.color;
+                this.ctx.arc(
+                    origin.x + Math.round((creature.location.x + s.vector.x) * scale),
+                    origin.y + Math.round((creature.location.y + s.vector.y) * scale),
+                    creature.sightRange * scale,
+                    0,
+                    Math.PI * 2
+                );
+                this.ctx.fill();
+                this.ctx.closePath();
+            }
         }
 
         this.ctx.stroke();

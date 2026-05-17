@@ -282,6 +282,13 @@ class World
                 }
             });
 
+            //Reproduce if energy threshold reached. Children get pushed to the
+            //end of the array, so they aren't visited again this frame.
+            if (creature.shouldReproduce())
+            {
+                this.creatures.push(creature.reproduce());
+            }
+
             if (creature.isAlive())
             {
                 this.canvasArtist.drawCreature(creature, this.origin, scale);

@@ -23,6 +23,10 @@ class Creature
         this.energyConsumptionPerSpeed = 0.02;
         //Extra energy drained per step while standing on a water tile.
         this.waterDrain = 0.5;
+        //Energy threshold at which the creature reproduces; on reproduction
+        //the parent loses half its energy and the child starts with the
+        //parent's remaining (post-split) energy.
+        this.reproductionEnergy = 80;
 
         //Vision. Three sight spots: left, center, right. All at the same distance,
         //offset by sightAngles (radians) relative to facing direction.
@@ -133,6 +137,33 @@ class Creature
     isAlive()
     {
         return this.energy > this.minEnergy;
+    }
+
+    shouldReproduce()
+    {
+        return this.energy >= this.reproductionEnergy;
+    }
+
+    //Halve parent energy and return a child clone sharing the same brain and
+    //inheritable parameters. Child spawns at the parent's location with a
+    //random facing and starts with the parent's post-split energy.
+    reproduce()
+    {
+        this.energy /= 2;
+        const child = new Creature(
+            this.location.x,
+            this.location.y,
+            Math.random() * 2 * Math.PI,
+            this.radius,
+            this.brain
+        );
+        child.sightRange = this.sightRange;
+        child.minSpeed = this.minSpeed;
+        child.maxSpeed = this.maxSpeed;
+        child.velocityMagnitude = this.velocityMagnitude;
+        child.reproductionEnergy = this.reproductionEnergy;
+        child.energy = this.energy;
+        return child;
     }
 
     step()

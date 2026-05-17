@@ -7,7 +7,10 @@ class Creature
         //Physics
         this.location = {x: x, y: y};
         this.velocity = {x: 0, y: 0};
-        this.velocityMagnitude = 0.5;
+        //Speed bounds the brain's speed output is mapped into.
+        this.minSpeed = 0.25;
+        this.maxSpeed = 0.75;
+        this.velocityMagnitude = (this.minSpeed + this.maxSpeed) / 2;
         this.radius = radius;
         this.direction = direction; //0 - 2*PI
 
@@ -15,9 +18,10 @@ class Creature
         this.maxEnergy = 100;
         this.minEnergy = 0;
         this.energy = this.maxEnergy / 2;
-        this.energyConsumption = 0.01;
-        //Extra energy drained per step while standing on a water tile, on top of
-        //the normal energyConsumption.
+        //Per-step drain is proportional to current speed:
+        //energy -= velocityMagnitude * energyConsumptionPerSpeed.
+        this.energyConsumptionPerSpeed = 0.02;
+        //Extra energy drained per step while standing on a water tile.
         this.waterDrain = 0.5;
 
         //Vision. Three sight spots: left, center, right. All at the same distance,
@@ -36,9 +40,10 @@ class Creature
 
         //Brain. Inputs are 3 sights x 5 binary flags = 15 inputs total. Each sight
         //contributes [isWater, isGrass, isSand, isFlower, isCreature] in left,
-        //center, right order. Two outputs: output[0] in [-1, 1] is scaled by
+        //center, right order. Three outputs: output[0] in [-1, 1] is scaled by
         //maxTurn for the rotation; output[1] is a gate -- rotation is applied
-        //only when output[1] > 0.
+        //only when output[1] > 0; output[2] in [-1, 1] is mapped linearly into
+        //[minSpeed, maxSpeed] for velocityMagnitude.
         this.brain = brain;
         this.maxTurn = 0.2;
 
@@ -71,6 +76,10 @@ class Creature
         {
             this.rotate(output[0] * this.maxTurn);
         }
+        //Map output[2] from [-1, 1] to [minSpeed, maxSpeed].
+        const speedRange = this.maxSpeed - this.minSpeed;
+        this.velocityMagnitude = this.minSpeed + (output[2] + 1) * 0.5 * speedRange;
+        this.updateVelocity();
     }
 
     updateVelocity()
@@ -128,7 +137,7 @@ class Creature
 
     step()
     {
-        this.energy -= this.energyConsumption;
+        this.energy -= this.velocityMagnitude * this.energyConsumptionPerSpeed;
         this.location.x += this.velocity.x;
         this.location.y += this.velocity.y;
     }

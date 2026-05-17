@@ -36,6 +36,34 @@ class Brain
         return Math.tanh(x);
     }
 
+    //Deep copy of the weights so the clone can mutate independently.
+    clone()
+    {
+        const clonedWeights = this.weights.map(layer =>
+            layer.map(row => row.slice())
+        );
+        return new Brain(this.layerSizes.slice(), clonedWeights);
+    }
+
+    //For each weight, with probability `rate`, add a uniform jitter in
+    //[-sigma, +sigma]. Mutates in place.
+    mutate(rate, sigma = 0.2)
+    {
+        for (const layer of this.weights)
+        {
+            for (const row of layer)
+            {
+                for (let i = 0; i < row.length; i++)
+                {
+                    if (Math.random() < rate)
+                    {
+                        row[i] += (Math.random() - 0.5) * 2 * sigma;
+                    }
+                }
+            }
+        }
+    }
+
     think(inputs)
     {
         let activations = inputs;

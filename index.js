@@ -328,8 +328,8 @@ class Simulator
 
     init()
     {
-        const nofCreatures = 10;
-        const nofFlowers = 30;
+        const nofCreatures = 40;
+        const nofFlowers = 40;
         const flowerColor = {r: 255, g: 0, b: 0};
         for (let i = 0; i < nofCreatures; i++)
         {

@@ -1,3 +1,19 @@
+//Probability that any single parameter (per creature trait, per brain weight)
+//is perturbed during reproduction.
+const MUTATION_RATE = 0.01;
+
+//With probability MUTATION_RATE, add uniform jitter in [-sigma, +sigma] and
+//clamp to [min, max]; otherwise return value unchanged.
+function maybeMutate(value, sigma, min, max)
+{
+    if (Math.random() < MUTATION_RATE)
+    {
+        const jitter = (Math.random() - 0.5) * 2 * sigma;
+        return Math.max(min, Math.min(max, value + jitter));
+    }
+    return value;
+}
+
 //Represents a single creature wondering in the world
 class Creature
 {
@@ -25,8 +41,10 @@ class Creature
         this.waterDrain = 0.5;
         //Energy threshold at which the creature reproduces; on reproduction
         //the parent loses half its energy and the child starts with the
-        //parent's remaining (post-split) energy.
-        this.reproductionEnergy = 80;
+        //parent's remaining (post-split) energy. Randomized for initial
+        //creatures; children inherit the parent's value (see reproduce()).
+        //Range 50-95.
+        this.reproductionEnergy = Math.random() * 45 + 50;
 
         //Vision. Three sight spots: left, center, right. All at the same distance,
         //offset by sightAngles (radians) relative to facing direction.
@@ -144,24 +162,37 @@ class Creature
         return this.energy >= this.reproductionEnergy;
     }
 
-    //Halve parent energy and return a child clone sharing the same brain and
-    //inheritable parameters. Child spawns at the parent's location with a
-    //random facing and starts with the parent's post-split energy.
+    //Halve parent energy and return a child with a (possibly mutated) clone of
+    //the brain and inheritable parameters. Child spawns at the parent's
+    //location with a random facing and starts with the parent's post-split
+    //energy. Each weight and each inheritable trait independently mutates with
+    //probability MUTATION_RATE.
     reproduce()
     {
         this.energy /= 2;
+
+        const childBrain = this.brain.clone();
+        childBrain.mutate(MUTATION_RATE);
+
+        //Child heads off in a random direction, independent of the parent.
+        const childDirection = Math.random() * 2 * Math.PI;
         const child = new Creature(
             this.location.x,
             this.location.y,
-            Math.random() * 2 * Math.PI,
+            childDirection,
             this.radius,
-            this.brain
+            childBrain
         );
-        child.sightRange = this.sightRange;
-        child.minSpeed = this.minSpeed;
-        child.maxSpeed = this.maxSpeed;
+        child.sightRange         = maybeMutate(this.sightRange,         2,    5,   50);
+        child.minSpeed           = maybeMutate(this.minSpeed,           0.05, 0.05, 1.0);
+        child.maxSpeed           = maybeMutate(this.maxSpeed,           0.05, 0.3,  2.0);
+        child.reproductionEnergy = maybeMutate(this.reproductionEnergy, 5,    30,   99);
+        //If mutation crossed the speeds, swap so min <= max.
+        if (child.minSpeed > child.maxSpeed)
+        {
+            [child.minSpeed, child.maxSpeed] = [child.maxSpeed, child.minSpeed];
+        }
         child.velocityMagnitude = this.velocityMagnitude;
-        child.reproductionEnergy = this.reproductionEnergy;
         child.energy = this.energy;
         return child;
     }

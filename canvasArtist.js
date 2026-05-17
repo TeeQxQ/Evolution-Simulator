@@ -56,6 +56,22 @@ class CanvasArtist
         this.ctx.stroke();
         this.ctx.closePath();
 
+        //Two eyes -- small black dots offset forward and to either side of facing.
+        const eyeOffsetAngle = Math.PI / 6;
+        const eyeDistance = creature.radius * 0.55;
+        const eyeRadius = creature.radius * 0.18;
+        for (const sign of [-1, 1])
+        {
+            const a = creature.direction + sign * eyeOffsetAngle;
+            const ex = origin.x + Math.round((creature.location.x + Math.cos(a) * eyeDistance) * scale);
+            const ey = origin.y + Math.round((creature.location.y + Math.sin(a) * eyeDistance) * scale);
+            this.ctx.beginPath();
+            this.ctx.fillStyle = 'black';
+            this.ctx.arc(ex, ey, eyeRadius * scale, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.closePath();
+        }
+
         if (DEBUG_CANVAS_ARTIST)
         {
             for (const s of creature.sights)

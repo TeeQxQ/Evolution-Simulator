@@ -18,12 +18,12 @@ class Tile
         this.biome = biome.GRASS;
         this.maxEnergy = 100;
         this.minEnergy = 0;
-        this.energy = 25; //Math.round(this.maxEnergy/2); //50% at the beginning
+        this.energy = 60;
         this.energyGrowRate = 0.02;
         this.nofFlowers = 0;
         //Storage to store energy which will be returned after all flowers have died
         this.energyRecoveryStorage = 0;
-        this.energyRecoveryRate = 0.01;
+        this.energyRecoveryRate = 0.02;
     }
 
     hasEnergy()

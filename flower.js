@@ -8,10 +8,10 @@ class Flower
 
         //Energy levels
         this.energy = energy;
-        this.maxEnergy = 20;
+        this.maxEnergy = 14;
         this.minEnergy = 10;
         this.splitEnergy = 10;
-        this.energyGrowRate = 0.01;
+        this.energyGrowRate = 0.015;
 
         //Physical size
         this.startSize = 1;

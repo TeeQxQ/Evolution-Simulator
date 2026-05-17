@@ -32,6 +32,23 @@ class World
                                                 );
         this.flowers = [];
         this.mapUpdateNeeded = true;
+        //Sentinel returned by tileAt() for any coordinate outside the map.
+        //Only carries the fields sight and water-drain logic actually read.
+        this.offMapTile = { biome: biome.WATER, color: 'blue' };
+    }
+
+    //Tile at world coordinates (worldX, worldY). Returns the off-map water
+    //sentinel when the coordinate falls outside the map.
+    tileAt(worldX, worldY)
+    {
+        const tileX = Math.floor(worldX / this.tileSize);
+        const tileY = Math.floor(worldY / this.tileSize);
+        if (tileX < 0 || tileX >= this.dimensions.width ||
+            tileY < 0 || tileY >= this.dimensions.height)
+        {
+            return this.offMapTile;
+        }
+        return this.tiles[tileY * this.dimensions.width + tileX];
     }
 
     //Map is drawn on the background canvas, and it is updated infrequently to optimize performance
@@ -46,11 +63,16 @@ class World
         });
     }
 
-    addCreature(x, y)
+    addCreature()
     {
+        //Random position within the map.
+        const x = Math.random() * this.dimensions.width * this.tileSize;
+        const y = Math.random() * this.dimensions.height * this.tileSize;
         //random direction
         const direction = Math.random() * 2 * Math.PI;
-        this.creatures.push(new Creature(x, y, direction, 20));
+        //15 inputs (3 sights x [isWater, isGrass, isSand, isFlower, isCreature]) -> 8 hidden -> 2 outputs (rotation, shouldRotate gate)
+        const brain = Brain.random([15, 8, 2]);
+        this.creatures.push(new Creature(x, y, direction, 20, brain));
     }
 
     addFlower(color)
@@ -198,31 +220,59 @@ class World
 
         this.creatures.forEach((creature, creatureIndex) =>
         {
+            //Brain reacts to last frame's sight, then we move.
+            creature.think();
             creature.step();
 
-            //Update sight based on tile
-            const sightX = creature.location.x + creature.sight.x;
-            const sightY = creature.location.y + creature.sight.y;
-            const tileX = Math.floor(sightX / this.tileSize);
-            const tileY = Math.floor(sightY / this.tileSize);
-            creature.sightColor = this.tiles[tileY * this.dimensions.width + tileX].color;
-
-            //Collisions with flowers
-            this.flowers.forEach((flower, flowerIndex) => 
+            //Water is fatal: drain extra energy when standing on a water tile.
+            //Off-map counts as water too.
+            const standTile = this.tileAt(creature.location.x, creature.location.y);
+            if (standTile.biome === biome.WATER)
             {
-                //Check wheter sight is on flower:
-                if (this.distance(sightX,
-                                  sightY,
-                                  flower.location.x,
-                                  flower.location.y) < creature.sightRange)
-                {
-                    const newColor = 'rgb(' + flower.color.r + ',' + flower.color.g + ',' + flower.color.b + ')';
-                    creature.sightColor = newColor;
-                }
+                creature.energy -= creature.waterDrain;
+            }
 
-                if (this.distance(creature.location.x, 
-                                  creature.location.y, 
-                                  flower.location.x, 
+            //Update each sight spot (left, center, right).
+            for (const s of creature.sights)
+            {
+                const sightX = creature.location.x + s.vector.x;
+                const sightY = creature.location.y + s.vector.y;
+                const sightTile = this.tileAt(sightX, sightY);
+                s.color = sightTile.color;
+                s.biome = sightTile.biome;
+                s.hasFlower = false;
+                s.hasCreature = false;
+
+                //Other creatures in this sight spot.
+                this.creatures.forEach((other, otherIndex) =>
+                {
+                    if (otherIndex === creatureIndex) return;
+                    if (this.distance(sightX, sightY,
+                                      other.location.x, other.location.y) < creature.sightRange + other.radius)
+                    {
+                        s.hasCreature = true;
+                        s.color = 'cyan';
+                    }
+                });
+
+                //Flowers in this sight spot.
+                this.flowers.forEach((flower) =>
+                {
+                    if (this.distance(sightX, sightY,
+                                      flower.location.x, flower.location.y) < creature.sightRange)
+                    {
+                        s.color = 'rgb(' + flower.color.r + ',' + flower.color.g + ',' + flower.color.b + ')';
+                        s.hasFlower = true;
+                    }
+                });
+            }
+
+            //Flower collisions (independent of sight).
+            this.flowers.forEach((flower, flowerIndex) =>
+            {
+                if (this.distance(creature.location.x,
+                                  creature.location.y,
+                                  flower.location.x,
                                   flower.location.y) < creature.radius + flower.size)
                 {
                     if(creature.eat(flower.energy))
@@ -230,7 +280,7 @@ class World
                         this.flowers.splice(flowerIndex, 1);
                     }
                 }
-            })
+            });
 
             if (creature.isAlive())
             {
@@ -271,12 +321,12 @@ class Simulator
 
     init()
     {
-        const nofCreatures = 1;
-        const nofFlowers = 10;
+        const nofCreatures = 10;
+        const nofFlowers = 30;
         const flowerColor = {r: 255, g: 0, b: 0};
         for (let i = 0; i < nofCreatures; i++)
         {
-            this.world.addCreature(750, 750);
+            this.world.addCreature();
         }
 
         for (let i = 0; i < nofFlowers; i++)

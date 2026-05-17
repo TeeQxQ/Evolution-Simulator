@@ -134,10 +134,11 @@ class World
             this.mapUpdateNeeded = tile.step() || this.mapUpdateNeeded;
         });
 
-        if (this.mapUpdateNeeded || DEBUG_CANVAS_ARTIST)
+        if (this.mapUpdateNeeded || this.canvasArtist.tilesetDirty || DEBUG_CANVAS_ARTIST)
         {
             this.updateMap(scale);
             this.mapUpdateNeeded = false;
+            this.canvasArtist.tilesetDirty = false;
         }
 
         this.flowers.forEach((flower, index) => 
@@ -271,7 +272,7 @@ class Simulator
     init()
     {
         const nofCreatures = 1;
-        const nofFlowers = 1;
+        const nofFlowers = 10;
         const flowerColor = {r: 255, g: 0, b: 0};
         for (let i = 0; i < nofCreatures; i++)
         {

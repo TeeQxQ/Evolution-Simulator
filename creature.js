@@ -14,7 +14,7 @@ class Creature
         //Energy
         this.maxEnergy = 100;
         this.minEnergy = 0;
-        this.energy = this.maxEnergy;
+        this.energy = this.maxEnergy / 2;
         this.energyConsumption = 0.01;
         this.waterMultiplier = 5;
 

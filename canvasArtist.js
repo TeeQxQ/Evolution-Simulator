@@ -6,6 +6,11 @@ class CanvasArtist
     {
         this.bgCtx = backgroundContext;
         this.ctx = gameContext;
+
+        this.grassImage = new Image();
+        this.grassImage.src = "grass.jpg";
+        this.tilesetDirty = true;
+        this.grassImage.onload = () => { this.tilesetDirty = true; };
     }
 
     //https://stackoverflow.com/questions/5560248/programmatically-lighten-or-darken-a-hex-color-or-rgb-and-blend-colors
@@ -94,40 +99,45 @@ class CanvasArtist
         //Water won't be drawn
         if (tile.biome != biome.WATER)
         {
-            let color;
-            switch(tile.biome)
-            {
-                case biome.GRASS:
-                    color = "green";
-                    break;
-                case biome.SAND:
-                    color = "orange";
-                    break;
-                default:
-                    break;
-            }
-            this.bgCtx.fillStyle = color;
-            this.bgCtx.beginPath();
-            this.bgCtx.rect(origin.x + tile.location.x * tile.size * scale,
-                            origin.y + tile.location.y * tile.size * scale,
-                            tile.size * scale,
-                            tile.size * scale);
-            this.bgCtx.fill();
-            
+            const tileX = origin.x + tile.location.x * tile.size * scale;
+            const tileY = origin.y + tile.location.y * tile.size * scale;
+            const tileW = tile.size * scale;
 
+            if (tile.biome == biome.GRASS
+                && this.grassImage.complete
+                && this.grassImage.naturalWidth > 0)
+            {
+                this.bgCtx.drawImage(this.grassImage, tileX, tileY, tileW, tileW);
+            }
+            else
+            {
+                let color;
+                switch(tile.biome)
+                {
+                    case biome.GRASS:
+                        color = "green";
+                        break;
+                    case biome.SAND:
+                        color = "orange";
+                        break;
+                    default:
+                        break;
+                }
+                this.bgCtx.fillStyle = color;
+                this.bgCtx.beginPath();
+                this.bgCtx.rect(tileX, tileY, tileW, tileW);
+                this.bgCtx.fill();
+            }
             if(DEBUG_CANVAS_ARTIST)
             {
-                this.bgCtx.stroke();
                 this.bgCtx.font = "10px Arial";
                 this.bgCtx.fillStyle = "white";
                 this.bgCtx.textAlign = "center";
-                this.bgCtx.fillText(tile.energy.toFixed(2) + ":" + tile.energyRecoveryStorage.toFixed(2), 
+                this.bgCtx.fillText(tile.energy.toFixed(2) + ":" + tile.energyRecoveryStorage.toFixed(2),
                                     origin.x + (tile.location.x * tile.size + tile.size/2) * scale,
                                     origin.y + (tile.location.y * tile.size + tile.size/2) * scale
                                     );
             }
-
-            this.bgCtx.closePath();
         }
     }
 }

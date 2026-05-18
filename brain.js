@@ -46,9 +46,10 @@ class Brain
     }
 
     //For each weight, with probability `rate`, add a uniform jitter in
-    //[-sigma, +sigma]. Mutates in place.
+    //[-sigma, +sigma]. Mutates in place. Returns true if any weight changed.
     mutate(rate, sigma = 0.2)
     {
+        let mutated = false;
         for (const layer of this.weights)
         {
             for (const row of layer)
@@ -58,10 +59,12 @@ class Brain
                     if (Math.random() < rate)
                     {
                         row[i] += (Math.random() - 0.5) * 2 * sigma;
+                        mutated = true;
                     }
                 }
             }
         }
+        return mutated;
     }
 
     think(inputs)

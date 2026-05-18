@@ -309,7 +309,7 @@ class Simulator
     constructor()
     {
         //Scaling
-        this.minScale = 0.4;
+        this.minScale = 0.15;
         this.maxScale = 3;
         this.scale = this.minScale;
         this.tileSize = 50;
@@ -318,8 +318,8 @@ class Simulator
         this.mouseClicked = false;
         this.mouseClickCoord = {x: 0, y: 0};
 
-        const worldWidth = 30;
-        const worldHeight = 30;
+        const worldWidth = 60;
+        const worldHeight = 60;
         
         this.world = new World(worldWidth, worldHeight, this.tileSize, this.scale);
 
@@ -412,10 +412,23 @@ class Simulator
     {
         if (this.mouseClicked)
         {
-            this.world.moveOrigin(event.x - this.mouseClickCoord.x, 
+            this.world.moveOrigin(event.x - this.mouseClickCoord.x,
                                   event.y - this.mouseClickCoord.y);
             this.mouseClickCoord = {x: event.x, y: event.y};
         }
+    }
+
+    //Sync canvas drawing buffers to the window size on resize. Without this the
+    //CSS-stretched canvases get sampled from a stale buffer and tiles look
+    //distorted; resyncing keeps tiles at their natural pixel size.
+    resizeController()
+    {
+        canvas.width            = window.innerWidth;
+        canvas.height           = window.innerHeight;
+        backgroundCanvas.width  = window.innerWidth;
+        backgroundCanvas.height = window.innerHeight;
+        //Resizing the buffer clears the background; force a redraw.
+        this.world.mapUpdateNeeded = true;
     }
 }
 
@@ -436,10 +449,15 @@ canvas.onmouseup = (event) =>
     simulator.releaseController(event);
 }
 
-canvas.onmousemove = (event) => 
+canvas.onmousemove = (event) =>
 {
     simulator.moveController(event);
 }
+
+window.addEventListener('resize', () =>
+{
+    simulator.resizeController();
+});
 
 simulator.run();
 

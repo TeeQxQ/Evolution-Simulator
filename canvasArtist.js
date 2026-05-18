@@ -127,15 +127,21 @@ class CanvasArtist
         //Water won't be drawn
         if (tile.biome != biome.WATER)
         {
-            const tileX = origin.x + tile.location.x * tile.size * scale;
-            const tileY = origin.y + tile.location.y * tile.size * scale;
-            const tileW = tile.size * scale;
+            //Snap each tile's start and end to integer pixels and derive width
+            //from the next tile's start, so adjacent tiles share an exact pixel
+            //boundary. Otherwise fractional edges at low zoom alias into seams.
+            const tileX     = Math.floor(origin.x + tile.location.x       * tile.size * scale);
+            const tileNextX = Math.floor(origin.x + (tile.location.x + 1) * tile.size * scale);
+            const tileY     = Math.floor(origin.y + tile.location.y       * tile.size * scale);
+            const tileNextY = Math.floor(origin.y + (tile.location.y + 1) * tile.size * scale);
+            const tileW = tileNextX - tileX;
+            const tileH = tileNextY - tileY;
 
             if (tile.biome == biome.GRASS
                 && this.grassImage.complete
                 && this.grassImage.naturalWidth > 0)
             {
-                this.bgCtx.drawImage(this.grassImage, tileX, tileY, tileW, tileW);
+                this.bgCtx.drawImage(this.grassImage, tileX, tileY, tileW, tileH);
             }
             else
             {
@@ -153,7 +159,7 @@ class CanvasArtist
                 }
                 this.bgCtx.fillStyle = color;
                 this.bgCtx.beginPath();
-                this.bgCtx.rect(tileX, tileY, tileW, tileW);
+                this.bgCtx.rect(tileX, tileY, tileW, tileH);
                 this.bgCtx.fill();
             }
             if(DEBUG_CANVAS_ARTIST)

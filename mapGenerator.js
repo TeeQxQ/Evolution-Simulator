@@ -20,7 +20,9 @@ class MapGenerator
             waterArray[i] = 0;
         }
 
-        const waterHits = 1000;
+        //Scale water hits with map area so density matches the original 30x30
+        //tuning of 1000 hits over 900 tiles.
+        const waterHits = Math.round(width * height * (1000 / 900));
         for(let i = 0; i < waterHits; i++)
         {
             const r = Math.floor(Math.random() * width * height);

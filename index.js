@@ -63,11 +63,11 @@ class World
         });
     }
 
-    addCreature()
+    addCreature(x, y)
     {
-        //Random position within the map.
-        const x = Math.random() * this.dimensions.width * this.tileSize;
-        const y = Math.random() * this.dimensions.height * this.tileSize;
+        //If a position is not provided, drop the creature randomly inside the map.
+        if (x === undefined) x = Math.random() * this.dimensions.width * this.tileSize;
+        if (y === undefined) y = Math.random() * this.dimensions.height * this.tileSize;
         //random direction
         const direction = Math.random() * 2 * Math.PI;
         //15 inputs (3 sights x [isWater, isGrass, isSand, isFlower, isCreature]) -> 8 hidden -> 3 outputs (rotation, shouldRotate gate, speed)
@@ -400,12 +400,24 @@ class Simulator
     {
         this.mouseClicked = true;
         this.mouseClickCoord = {x: event.x, y: event.y};
-        this.world.creatures[0].rotate(Math.PI/2);
+        //Track the press position separately so the release handler can tell
+        //a click (press+release without movement) from a drag (panning).
+        this.mouseDownCoord = {x: event.x, y: event.y};
     }
 
     releaseController(event)
     {
         this.mouseClicked = false;
+        //Spawn a random creature at the cursor when the gesture was a click
+        //rather than a drag. 4px slack absorbs tiny hand jitter on press.
+        const dx = event.x - this.mouseDownCoord.x;
+        const dy = event.y - this.mouseDownCoord.y;
+        if (dx * dx + dy * dy <= 16)
+        {
+            const worldX = (event.x - this.world.origin.x) / this.scale;
+            const worldY = (event.y - this.world.origin.y) / this.scale;
+            this.world.addCreature(worldX, worldY);
+        }
     }
 
     moveController(event)

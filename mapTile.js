@@ -21,7 +21,7 @@ class Tile {
         this.nofFlowers = 0;
         //Storage to store energy which will be returned after all flowers have died
         this.energyRecoveryStorage = 0;
-        this.energyRecoveryRate = 0.5;
+        this.energyRecoveryRate = 2.0;
     }
 
     hasEnergy() {

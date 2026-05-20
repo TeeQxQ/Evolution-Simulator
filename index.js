@@ -70,8 +70,8 @@ class World
         if (y === undefined) y = Math.random() * this.dimensions.height * this.tileSize;
         //random direction
         const direction = Math.random() * 2 * Math.PI;
-        //15 inputs (3 sights x [isWater, isGrass, isSand, isFlower, isCreature]) -> 8 hidden -> 3 outputs (rotation, shouldRotate gate, speed)
-        const brain = Brain.random([15, 8, 3]);
+        //16 inputs (3 sights x [isWater, isGrass, isSand, isFlower, isCreature] + energy/maxEnergy) -> 8 hidden -> 3 outputs (rotation, shouldRotate gate, speed)
+        const brain = Brain.random([16, 8, 3]);
         this.creatures.push(new Creature(x, y, direction, 20, brain));
     }
 

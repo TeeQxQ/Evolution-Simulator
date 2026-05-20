@@ -1,12 +1,18 @@
-//Probability that any single parameter (per creature trait, per brain weight)
-//is perturbed during reproduction.
-const MUTATION_RATE = 0.005;
+//Per-element mutation probabilities during reproduction. The brain has many
+//more weights than the creature has traits, so the per-element rates are tuned
+//so the *category-level* probability ("at least one weight mutates" vs
+//"at least one trait mutates") is roughly equal.
+//With the current brain shape (152 weights) and 5 traits:
+//  P(any brain weight mutates) ~= 1 - (1 - 0.0005)^152 ~= 7.3%
+//  P(any trait mutates)        ~= 1 - (1 - 0.018)^5   ~= 8.7%
+const BRAIN_MUTATION_RATE = 0.0005;
+const TRAIT_MUTATION_RATE = 0.018;
 
-//With probability MUTATION_RATE, add uniform jitter in [-sigma, +sigma] and
-//clamp to [min, max]; otherwise return value unchanged. Returns {value, mutated}
-//so callers can detect whether the mutation actually fired.
+//With probability TRAIT_MUTATION_RATE, add uniform jitter in [-sigma, +sigma]
+//and clamp to [min, max]; otherwise return value unchanged. Returns
+//{value, mutated} so callers can detect whether the mutation actually fired.
 function maybeMutate(value, sigma, min, max) {
-    if (Math.random() < MUTATION_RATE) {
+    if (Math.random() < TRAIT_MUTATION_RATE) {
         const jitter = (Math.random() - 0.5) * 2 * sigma;
         return {
             value: Math.max(min, Math.min(max, value + jitter)),
@@ -56,7 +62,8 @@ class Creature {
 
         //Vision. Three sight spots: left, center, right. All at the same distance,
         //offset by sightAngles (radians) relative to facing direction.
-        this.sightMagnitude = this.radius * 3;
+        //Range 40-100
+        this.sightMagnitude = Math.random() * 60 + 40;
         //Range 10-30
         this.sightRange = Math.random() * 20 + 10;
         this.sightAngles = [-Math.PI / 6, 0, Math.PI / 6];
@@ -68,12 +75,12 @@ class Creature {
             hasCreature: false
         }));
 
-        //Brain. Inputs are 3 sights x 5 binary flags = 15 inputs total. Each sight
-        //contributes [isWater, isGrass, isSand, isFlower, isCreature] in left,
-        //center, right order. Three outputs: output[0] in [-1, 1] is scaled by
-        //maxTurn for the rotation; output[1] is a gate -- rotation is applied
-        //only when output[1] > 0; output[2] in [-1, 1] is mapped linearly into
-        //[minSpeed, maxSpeed] for velocityMagnitude.
+        //Brain. 16 inputs: 3 sights x 5 binary flags + current energy / maxEnergy.
+        //Each sight contributes [isWater, isGrass, isSand, isFlower, isCreature]
+        //in left, center, right order. Three outputs: output[0] in [-1, 1] is
+        //scaled by maxTurn for the rotation; output[1] is a gate -- rotation is
+        //applied only when output[1] > 0; output[2] in [-1, 1] is mapped
+        //linearly into [minSpeed, maxSpeed] for velocityMagnitude.
         this.brain = brain;
         this.maxTurn = 0.2;
 
@@ -81,9 +88,10 @@ class Creature {
         this.updateSight();
     }
 
-    //Flatten all sights into one input vector. Per sight (left, center, right):
-    //[isWater, isGrass, isSand, isFlower, isCreature].
-    sightAsBinary() {
+    //Brain input vector. Per sight (left, center, right):
+    //[isWater, isGrass, isSand, isFlower, isCreature], followed by the
+    //creature's current energy normalized to [0, 1].
+    brainInputs() {
         const inputs = [];
         for (const s of this.sights) {
             inputs.push(s.biome === biome.WATER ? 1 : 0);
@@ -92,12 +100,13 @@ class Creature {
             inputs.push(s.hasFlower ? 1 : 0);
             inputs.push(s.hasCreature ? 1 : 0);
         }
+        inputs.push(this.energy / this.maxEnergy);
         return inputs;
     }
 
     think() {
         if (!this.brain) return;
-        const output = this.brain.think(this.sightAsBinary());
+        const output = this.brain.think(this.brainInputs());
         const shouldRotate = output[1] > 0;
         if (shouldRotate) {
             this.rotate(output[0] * this.maxTurn);
@@ -159,13 +168,14 @@ class Creature {
     //Halve parent energy and return a child with a (possibly mutated) clone of
     //the brain and inheritable parameters. Child spawns at the parent's
     //location with a random facing and starts with the parent's post-split
-    //energy. Each weight and each inheritable trait independently mutates with
-    //probability MUTATION_RATE.
+    //energy. Each weight mutates with BRAIN_MUTATION_RATE, each trait with
+    //TRAIT_MUTATION_RATE; the two rates are tuned so the category-level
+    //probabilities are comparable.
     reproduce() {
         this.energy /= 2;
 
         const childBrain = this.brain.clone();
-        const brainMutated = childBrain.mutate(MUTATION_RATE);
+        const brainMutated = childBrain.mutate(BRAIN_MUTATION_RATE);
 
         //Child heads off in a random direction, independent of the parent.
         const childDirection = Math.random() * 2 * Math.PI;
@@ -177,19 +187,24 @@ class Creature {
             childBrain
         );
         const sightRange = maybeMutate(this.sightRange, 2, 5, 50);
+        const sightMagnitude = maybeMutate(this.sightMagnitude, 5, 20, 200);
         const minSpeed = maybeMutate(this.minSpeed, 0.05, 0.05, 1.0);
         const maxSpeed = maybeMutate(this.maxSpeed, 0.05, 0.3, 2.0);
         const reproductionEnergy = maybeMutate(this.reproductionEnergy, 5, 30, 99);
         child.sightRange = sightRange.value;
+        child.sightMagnitude = sightMagnitude.value;
         child.minSpeed = minSpeed.value;
         child.maxSpeed = maxSpeed.value;
         child.reproductionEnergy = reproductionEnergy.value;
+        //sightMagnitude is baked into sight vectors via updateSight; re-run
+        //since the constructor used a fresh random value before our override.
+        child.updateSight();
 
         //Color tracks behavioural mutation: if any inheritable trait or brain
         //weight changed this reproduction, jitter the color so visibly distinct
         //lineages emerge alongside behavioural drift; otherwise inherit exactly.
-        const traitMutated = brainMutated || sightRange.mutated || minSpeed.mutated
-            || maxSpeed.mutated || reproductionEnergy.mutated;
+        const traitMutated = brainMutated || sightRange.mutated || sightMagnitude.mutated
+            || minSpeed.mutated || maxSpeed.mutated || reproductionEnergy.mutated;
         if (traitMutated) {
             child.color = {
                 r: Math.floor(Math.random() * 256),

@@ -29,9 +29,10 @@ class Creature {
         //Physics
         this.location = { x: x, y: y };
         this.velocity = { x: 0, y: 0 };
-        //Speed bounds the brain's speed output is mapped into.
-        this.minSpeed = 0.25;
-        this.maxSpeed = 0.75;
+        //Speed bounds the brain's speed output is mapped into. minSpeed = 0
+        //means the brain can stop the creature completely.
+        this.minSpeed = 0;
+        this.maxSpeed = 1.0;
         this.velocityMagnitude = (this.minSpeed + this.maxSpeed) / 2;
         this.radius = radius;
         this.direction = direction; //0 - 2*PI
@@ -40,9 +41,9 @@ class Creature {
         this.maxEnergy = 100;
         this.minEnergy = 0;
         this.energy = this.maxEnergy / 2;
-        //Per-step drain is proportional to current speed:
-        //energy -= velocityMagnitude * energyConsumptionPerSpeed.
+        
         this.energyConsumptionPerSpeed = 0.02;
+        this.energyConsumptionBase = this.energyConsumptionPerSpeed / 10;
         //Extra energy drained per step while standing on a water tile.
         this.waterDrain = 0.2;
         //Energy threshold at which the creature reproduces; on reproduction
@@ -188,7 +189,7 @@ class Creature {
         );
         const sightRange = maybeMutate(this.sightRange, 2, 5, 50);
         const sightMagnitude = maybeMutate(this.sightMagnitude, 5, 20, 200);
-        const minSpeed = maybeMutate(this.minSpeed, 0.05, 0.05, 1.0);
+        const minSpeed = maybeMutate(this.minSpeed, 0.05, 0, 1.0);
         const maxSpeed = maybeMutate(this.maxSpeed, 0.05, 0.3, 2.0);
         const reproductionEnergy = maybeMutate(this.reproductionEnergy, 5, 30, 99);
         child.sightRange = sightRange.value;
@@ -225,7 +226,7 @@ class Creature {
     }
 
     step() {
-        this.energy -= this.velocityMagnitude * this.energyConsumptionPerSpeed;
+        this.energy -= this.energyConsumptionBase + this.velocityMagnitude * this.energyConsumptionPerSpeed;
         this.location.x += this.velocity.x;
         this.location.y += this.velocity.y;
     }

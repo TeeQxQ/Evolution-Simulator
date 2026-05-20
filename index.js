@@ -147,23 +147,16 @@ class World
         return Math.sqrt(Math.pow(xDiff, 2) + Math.pow(yDiff, 2));
     }
 
-    draw(scale)
+    //Advance the simulation by one tick. No rendering -- safe to call N times
+    //per animation frame for fast-forward.
+    update()
     {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        this.tiles.forEach((tile, index) => 
+        this.tiles.forEach((tile, index) =>
         {
             this.mapUpdateNeeded = tile.step() || this.mapUpdateNeeded;
         });
 
-        if (this.mapUpdateNeeded || this.canvasArtist.tilesetDirty || DEBUG_CANVAS_ARTIST)
-        {
-            this.updateMap(scale);
-            this.mapUpdateNeeded = false;
-            this.canvasArtist.tilesetDirty = false;
-        }
-
-        this.flowers.forEach((flower, index) => 
+        this.flowers.forEach((flower, index) =>
         {
             //Live...
             if (this.tiles[flower.tileIndex].hasEnergy())
@@ -194,10 +187,6 @@ class World
                     //Remove as much energy as flower took for growing
                     this.tiles[flower.tileIndex].energy -= flowerGrowth;
                 }
-
-                //flower.draw(this.origin, scale);
-                this.canvasArtist.drawFlower(flower, this.origin, scale);
-
             }
             //...or die
             else
@@ -212,10 +201,8 @@ class World
                 else
                 {
                     this.tiles[flower.tileIndex].energyRecoveryStorage += flowerWithering;
-                    this.canvasArtist.drawFlower(flower, this.origin, scale);
                 }
             }
-            
         });
 
         this.creatures.forEach((creature, creatureIndex) =>
@@ -289,18 +276,35 @@ class World
                 this.creatures.push(creature.reproduce());
             }
 
-            if (creature.isAlive())
-            {
-                this.canvasArtist.drawCreature(creature, this.origin, scale);
-            }
-            else
+            if (!creature.isAlive())
             {
                 this.creatures.splice(creatureIndex, 1);
             }
-            
+        });
+    }
+
+    //Paint the current world state. No simulation logic -- callable once per
+    //animation frame regardless of how many update() ticks ran.
+    render(scale)
+    {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (this.mapUpdateNeeded || this.canvasArtist.tilesetDirty || DEBUG_CANVAS_ARTIST)
+        {
+            this.updateMap(scale);
+            this.mapUpdateNeeded = false;
+            this.canvasArtist.tilesetDirty = false;
+        }
+
+        this.flowers.forEach((flower) =>
+        {
+            this.canvasArtist.drawFlower(flower, this.origin, scale);
         });
 
-        
+        this.creatures.forEach((creature) =>
+        {
+            this.canvasArtist.drawCreature(creature, this.origin, scale);
+        });
     }
 }
 
@@ -313,6 +317,10 @@ class Simulator
         this.maxScale = 3;
         this.scale = this.minScale;
         this.tileSize = 50;
+
+        //Simulation steps per animation frame. 1 = real-time (locked to refresh
+        //rate). Increase to fast-forward; render runs once per frame regardless.
+        this.simulationSpeed = 1;
 
         //Mouse handling
         this.mouseClicked = false;
@@ -344,12 +352,16 @@ class Simulator
 
     step()
     {
-        this.world.draw(this.scale);
+        this.world.update();
     }
 
     animate()
     {
-        this.step();
+        for (let i = 0; i < this.simulationSpeed; i++)
+        {
+            this.step();
+        }
+        this.world.render(this.scale);
         requestAnimationFrame(() => this.animate());
     }
 
@@ -430,6 +442,20 @@ class Simulator
         }
     }
 
+    //+ / = key speeds up the simulation, - / _ key slows it down.
+    //Clamped to [1, 32] -- 1 is real-time, higher values fast-forward.
+    keyController(event)
+    {
+        if (event.key === '+' || event.key === '=')
+        {
+            this.simulationSpeed = Math.min(32, this.simulationSpeed + 1);
+        }
+        else if (event.key === '-' || event.key === '_')
+        {
+            this.simulationSpeed = Math.max(1, this.simulationSpeed - 1);
+        }
+    }
+
     //Sync canvas drawing buffers to the window size on resize. Without this the
     //CSS-stretched canvases get sampled from a stale buffer and tiles look
     //distorted; resyncing keeps tiles at their natural pixel size.
@@ -469,6 +495,11 @@ canvas.onmousemove = (event) =>
 window.addEventListener('resize', () =>
 {
     simulator.resizeController();
+});
+
+window.addEventListener('keydown', (event) =>
+{
+    simulator.keyController(event);
 });
 
 simulator.run();
